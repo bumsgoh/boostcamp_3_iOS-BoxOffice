@@ -7,13 +7,18 @@
 //
 
 import UIKit
-
+/*
+ 1. 이미지의 contentType이나 제약조건이 제대로 설정되있지 않아 이미지가 길게 늘어나는 현상이 보입니다.
+ 2. 레이블의 위치가 과제 요구사항과는 조금 다릅니다.
+ 
+ 
+ */
 class BoxOfficeTableViewController: UIViewController {
     
     //MARK:- Property
     private var movies: [Movie] = []
     private let cellIdentifier = "movieTableCell"
-    private var orderType: String = "0"
+    private var orderType: String = "0" // Enum을 사용하면 가독성에 도움이 될것같습니다.
     
     private lazy var refreshControl: UIRefreshControl = {
         let refreshControl = UIRefreshControl()
@@ -46,7 +51,9 @@ class BoxOfficeTableViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        
+        /*
+         뷰가 appear 할때마다 계속해서 데이터 리퀘스트를 보내면 refresh의 의미가 없어지는것 같습니다. 추가해야하는 이유가 있을까요 ?
+         */
         indicator.startAnimating()
     
         requestMovie(orderType: orderType) { [weak self] result, isSucceed in
@@ -152,7 +159,7 @@ class BoxOfficeTableViewController: UIViewController {
             }
         }
     }
-    
+    //<같은 기능의 메서드가 테이블 / 컬렉션 두 군데에 있습니다. 하나로 합쳐볼 수 있을것 같습니다>
     private func showOrderTypeSettingActionSheet(style: UIAlertController.Style) {
         let orderSettingAlertController = UIAlertController(title: "정렬방식 선택", message: "영화를 어떤 순서로 정렬할까요?", preferredStyle: style)
         
@@ -224,7 +231,10 @@ extension BoxOfficeTableViewController: UITableViewDataSource, UITableViewDelega
         
         cell.movieGrade.image = UIImage(named: gradeImageName)
         cell.movieThumb.image = UIImage(named: "img_placeholder")
-        
+        /*
+         데이터 리퀘스트에서 오류시 사용자에게 보여줄 수 있는 화면이 없습니다. 추가한다면 더 사용자에게 유익할 것 같습니다.
+         
+         */
         DispatchQueue.global().async {
             guard let thumb = movie.thumb else { return }
             guard let thumbImageURL = URL(string: thumb) else {

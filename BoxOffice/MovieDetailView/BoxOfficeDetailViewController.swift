@@ -7,7 +7,7 @@
 // * 두번째 화면의 컨트롤러: 한 영화에 대한 상세 정보들을 보여줌 *
 
 import UIKit
-
+//로테이션시 대응되는 코드가 없습니다. 가로화면에서도 유연하게 볼 수 있도록 구성하면 좋을 것 같습니다.
 class BoxOfficeDetailViewController: UIViewController {
     //MARK:- Property
     private var comments: [Comment] = []
@@ -50,6 +50,10 @@ class BoxOfficeDetailViewController: UIViewController {
     }
     
     //영화 상세정보 서버에 요청
+    /*
+     네트워트를 담당하는 layer가 하나 있으면 좋을것 같습니다. requestMovieDetail와 유사한 메서드가 중복적으로 뷰컨트롤러마다 나타나있습니다.
+     
+     */
     func requestMovieDetail(id: String) {
         let baseURL = "http://connect-boxoffice.run.goorm.io/movie?id="
         
@@ -163,7 +167,9 @@ extension BoxOfficeDetailViewController: UITableViewDataSource, UITableViewDeleg
             let headerView = UIView(frame: CGRect(x: 0, y: 0, width: tableView.frame.size.width, height: 40))
             
             headerView.backgroundColor = UIColor.white
-            
+            /*
+             tableView 메서드 내에서 헤더뷰의 구성요소들을 인스탠스화 하고 addSubView해주기 보다는 해당 헤더뷰의 클래스 내에서 해주는 편이 간결할 것 같습니다.
+             */
             let title = UILabel()
             title.frame = CGRect(x: self.view.bounds.width * 0.02 , y: 0, width: 100, height: 40)
             title.font = UIFont.systemFont(ofSize: 21.0)

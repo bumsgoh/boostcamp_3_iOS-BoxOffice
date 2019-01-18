@@ -32,7 +32,12 @@ class StarRatingView: UIView {
         guard let containerView = containerView else {
             return
         }
-        
+        /*
+         아래와 같은 방식으로 하면 더 간결할 것 같습니다.
+       guard let containerView = Bundle.main.loadNibNamed("StarRatingView", owner: self, options: nil)?.first as? UIView else {
+            return
+        }
+        */
         containerView.frame = self.bounds
         addSubview(containerView)
     }

@@ -13,7 +13,7 @@ class BoxOfficeCollectionViewController: UIViewController {
     //MARK:- Property
     private var movies: [Movie] = []
     private let cellIdentifier = "movieCollectionCell"
-    private var orderType: String = "0"
+    private var orderType: String = "0"// Enum으로 구성해보면 가독성이 더 좋아질 것 같습니다.
     
     private lazy var refreshControl: UIRefreshControl = {
         let refreshControl = UIRefreshControl()
@@ -126,7 +126,7 @@ class BoxOfficeCollectionViewController: UIViewController {
             }
         }
     }
-    
+    //<같은 기능의 메서드가 테이블 / 컬렉션 두 군데에 있습니다. 하나로 합쳐볼 수 있을것 같습니다>
     private func showOrderTypeSettingActionSheet(style: UIAlertController.Style) {
         let orderSettingAlertController = UIAlertController(title: "정렬방식 선택", message: "영화를 어떤 순서로 정렬할까요?", preferredStyle: style)
         
@@ -199,7 +199,10 @@ extension BoxOfficeCollectionViewController: UICollectionViewDataSource, UIColle
         
         cell.movieGrade.image = UIImage(named: gradeImageName)
         cell.movieThumb.image = UIImage(named: "img_placeholder")
-        
+        /*
+         데이터 리퀘스트에서 오류시 사용자에게 보여줄 수 있는 화면이 없습니다. 추가한다면 더 사용자에게 유익할 것 같습니다.
+         
+         */
         DispatchQueue.global().async {
             guard let thumb = movie.thumb else { return }
             guard let thumbImageURL = URL(string: thumb) else {

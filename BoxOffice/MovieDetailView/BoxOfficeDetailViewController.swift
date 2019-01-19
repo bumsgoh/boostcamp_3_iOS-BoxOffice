@@ -55,81 +55,67 @@ class BoxOfficeDetailViewController: UIViewController {
      
      */
     func requestMovieDetail(id: String) {
-        let baseURL = "http://connect-boxoffice.run.goorm.io/movie?id="
         
-        guard let movieId = movieId else { return }
-        guard let url = URL(string: baseURL + movieId) else { return }
+        guard let request = BoxOfficeAPI.shared.makeRequest(path: .detail, components: .movieId, orderType: nil, movieId: id) else {
+            
+            return
+        }
+        BoxOfficeAPI.shared.requestMovie(with: request, decodeType: MovieDetail.self) { [weak self] (data, isSuccess) in
 
-        let session = URLSession(configuration: .default)
-        
-        let dataTask = session.dataTask(with: url) { [weak self] (data: Data?, response: URLResponse?, error: Error?) in
             guard let self = self else { return }
-            if let error = error {
-                self.alert("데이터 수신 실패")
-                print("error in dataTask: \(error.localizedDescription)")
+            if !isSuccess {
+                DispatchQueue.main.async {
+                     self.alert("데이터 수신 실패")
+                }
                 return
             }
             
             guard let data = data else {
+                DispatchQueue.main.async {
+                    self.alert("데이터 수신 실패")
+                }
                 print("data unwrapping error")
                 return
             }
-            
-            do {
-                let movieDetailApiResponse: MovieDetail = try JSONDecoder().decode(MovieDetail.self, from: data)
-                self.movieDetail = movieDetailApiResponse
+                self.movieDetail = data
                 
                 DispatchQueue.main.async {
                     self.tableView.reloadData()
                     self.indicator.stopAnimating()
                 }
-                
-            } catch let error {
-                print(error.localizedDescription)
-                
-                self.alert("데이터를 수신 실패.")
-            }
+            
         }
-        dataTask.resume()
     }
 
     func requestComments(id: String) {
-        let baseURL = "http://connect-boxoffice.run.goorm.io/comments?movie_id="
+        guard let request = BoxOfficeAPI.shared.makeRequest(path: .comments, components: .commentsMovieId, orderType: nil, movieId: id) else {
+            
+            return
+        }
         
-        guard let movieId = movieId else { return }
-        guard let url = URL(string: baseURL + movieId) else { return }
-        
-        let session = URLSession(configuration: .default)
-        
-        let dataTask = session.dataTask(with: url) { (data: Data?, response: URLResponse?, error: Error?) in
-            if let error = error {
-                self.alert("데이터 수신 실패")
-                print("error in dataTask: \(error.localizedDescription)")
+        BoxOfficeAPI.shared.requestMovie(with: request, decodeType: CommentApiResponse.self) { (data, isSuccess) in
+            
+            if !isSuccess {
+                DispatchQueue.main.async {
+                    self.alert("데이터 수신 실패")
+                }
                 return
             }
-            
             guard let data = data else {
                 print("data unwrapping error")
                 return
             }
             
-            do {
-                let commentsApiResponse: CommentApiResponse = try JSONDecoder().decode(CommentApiResponse.self, from: data)
-                guard let comments = commentsApiResponse.comments else { return }
-                self.comments = comments
-                
-                DispatchQueue.main.async {
-                    self.tableView.reloadData()
-                    self.indicator.stopAnimating()
-                }
-                
-            } catch let error {
-                print(error.localizedDescription)
-                self.alert("데이터를 수신 실패.")
+            self.comments = data.comments ?? []
+            
+            DispatchQueue.main.async {
+                self.tableView.reloadData()
+                self.indicator.stopAnimating()
             }
+            
         }
-        dataTask.resume()
     }
+
 }
 
 //MARK:- TableView Data Source,Delegate

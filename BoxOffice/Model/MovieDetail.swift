@@ -78,3 +78,15 @@ struct MovieDetail: Codable {
         userRating = try values.decodeIfPresent(Double.self, forKey: .userRating)
     }
 }
+
+enum Path: String {
+    case list = "/movies"
+    case detail = "/movie"
+    case comments = "/comments"
+}
+
+enum Components: String {
+    case orderType = "?order_type="
+    case movieId = "?id="
+    case commentsMovieId = "?movie_id="
+}

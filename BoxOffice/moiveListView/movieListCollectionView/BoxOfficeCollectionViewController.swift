@@ -13,7 +13,7 @@ class BoxOfficeCollectionViewController: UIViewController {
     //MARK:- Property
     private var movies: [Movie] = []
     private let cellIdentifier = "movieCollectionCell"
-    private var orderType: String = "0"// Enum으로 구성해보면 가독성이 더 좋아질 것 같습니다.
+    private var sortType: OrderType = .reservation// Enum으로 구성해보면 가독성이 더 좋아질 것 같습니다.
     
     private lazy var refreshControl: UIRefreshControl = {
         let refreshControl = UIRefreshControl()
@@ -34,43 +34,23 @@ class BoxOfficeCollectionViewController: UIViewController {
     //MARK:- Life Cycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         collectionView.addSubview(refreshControl)
     }
-    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        resetAndFetchMovies(orderType: BoxOfficeAPI.orderType)
+    }
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        resetAndFetchMovies(orderType: orderType)
+        //resetAndFetchMovies(orderType: sortType)
     }
     
     //MARK:- Method
     @objc func handleRefreshControl(_ sender: UIRefreshControl) {
         indicator.startAnimating()
-        
-        requestMovie(orderType: orderType) { [weak self] result, isSucceed in
-            guard let self = self else {
-                return
-            }
-            
-            if !isSucceed {
-                self.alert("해당 영화에 대한 데이터가 없습니다.")
-                return
-            }
-            
-            guard let result = result else {
-                self.alert("해당 영화에 대한 데이터가 없습니다.")
-                return
-            }
-            
-            self.movies = result
-            
-            DispatchQueue.main.async {
-                self.collectionView.reloadData()
-                self.indicator.stopAnimating()
-                self.refreshControl.endRefreshing()
-            }
-        }
+        fetchMovieList(sortType: sortType)
     }
     
     //데이터 전달
@@ -86,15 +66,15 @@ class BoxOfficeCollectionViewController: UIViewController {
         boxOfficeDetailViewController.navigationItem.title = movies[selectedIndex].title
     }
     
-    private func resetAndFetchMovies(orderType: String) {
+    private func resetAndFetchMovies(orderType: OrderType) {
         let navigationTitle: String
         
         switch orderType {
-        case "0":
+        case .reservation:
             navigationTitle = "예매율순"
-        case "1":
+        case .quration:
             navigationTitle = "큐레이션"
-        case "2":
+        case .date:
             navigationTitle = "개봉일순"
         default:
             navigationTitle = "예매율순"
@@ -105,19 +85,69 @@ class BoxOfficeCollectionViewController: UIViewController {
         indicator.startAnimating()
         
         //orderType에 맞게 영화목록 다시 가져오기
-        requestMovie(orderType: orderType) { [weak self] result, isSucceed in
-            guard let self = self else { return }
+        fetchMovieList(sortType: BoxOfficeAPI.orderType)
+    }
+    //<같은 기능의 메서드가 테이블 / 컬렉션 두 군데에 있습니다. 하나로 합쳐볼 수 있을것 같습니다>
+    private func showOrderTypeSettingActionSheet(style: UIAlertController.Style) {
+        let orderSettingAlertController = UIAlertController(title: "정렬방식 선택", message: "영화를 어떤 순서로 정렬할까요?", preferredStyle: style)
+        
+        let sortByRateAction = UIAlertAction(title: "예매율", style: .default) { (action) in
+            self.sortType = .reservation
+            BoxOfficeAPI.orderType = .reservation
+            self.resetAndFetchMovies(orderType: .reservation)
+        }
+        
+        let sortByCurationAction = UIAlertAction(title: "큐레이션", style: .default) { (action) in
+            self.sortType = .quration
+            BoxOfficeAPI.orderType = .quration
+            self.resetAndFetchMovies(orderType: .quration)
+        }
+        
+        let sortByDateAction = UIAlertAction(title: "개봉일순", style: .default) { (action) in
+            self.sortType = .date
+            BoxOfficeAPI.orderType = .date
+            self.resetAndFetchMovies(orderType: .date)
+        }
+        
+        let cancleAction = UIAlertAction(title: "취소", style: .cancel) { (action) in
+            self.sortType = .reservation
+            BoxOfficeAPI.orderType = .reservation
+            print("cancel")
+        }
+        orderSettingAlertController.addAction(sortByRateAction)
+        orderSettingAlertController.addAction(sortByCurationAction)
+        orderSettingAlertController.addAction(sortByDateAction)
+        orderSettingAlertController.addAction(cancleAction)
+        
+        present(orderSettingAlertController, animated: true, completion: nil)
+    }
+    
+    func fetchMovieList(sortType: OrderType) {
+        guard let request = BoxOfficeAPI.shared.makeRequest(path: .list, components: .orderType, orderType: sortType) else {
+            
+            return
+        }
+        BoxOfficeAPI.shared.requestMovie(with: request, decodeType: APIResponse.self) { [weak self]  result, isSucceed in
+            guard let self = self else {
+                return
+            }
+            
             if !isSucceed {
-                self.alert("해당 영화에 대한 데이터가 없습니다.")
+                DispatchQueue.main.async {
+                     self.alert("해당 영화에 대한 데이터가 없습니다.")
+                }
+               
                 return
             }
             
             guard let result = result else {
-                self.alert("해당 영화에 대한 데이터가 없습니다.")
+                DispatchQueue.main.async {
+                    self.alert("해당 영화에 대한 데이터가 없습니다.")
+                }
                 return
             }
             
-            self.movies = result
+            self.movies = result.movies
             
             DispatchQueue.main.async {
                 self.collectionView.reloadData()
@@ -125,37 +155,6 @@ class BoxOfficeCollectionViewController: UIViewController {
                 self.refreshControl.endRefreshing()
             }
         }
-    }
-    //<같은 기능의 메서드가 테이블 / 컬렉션 두 군데에 있습니다. 하나로 합쳐볼 수 있을것 같습니다>
-    private func showOrderTypeSettingActionSheet(style: UIAlertController.Style) {
-        let orderSettingAlertController = UIAlertController(title: "정렬방식 선택", message: "영화를 어떤 순서로 정렬할까요?", preferredStyle: style)
-        
-        let sortByRateAction = UIAlertAction(title: "예매율", style: .default) { (action) in
-            self.orderType = "0"
-            self.resetAndFetchMovies(orderType: "0")
-        }
-        
-        let sortByCurationAction = UIAlertAction(title: "큐레이션", style: .default) { (action) in
-            self.orderType = "1"
-            self.resetAndFetchMovies(orderType: "1")
-        }
-        
-        let sortByDateAction = UIAlertAction(title: "개봉일순", style: .default) { (action) in
-            self.orderType = "2"
-            self.resetAndFetchMovies(orderType: "2")
-        }
-        
-        let cancleAction = UIAlertAction(title: "취소", style: .cancel) { (action) in
-            self.orderType = "0"
-            print("cancle")
-        }
-        
-        orderSettingAlertController.addAction(sortByRateAction)
-        orderSettingAlertController.addAction(sortByCurationAction)
-        orderSettingAlertController.addAction(sortByDateAction)
-        orderSettingAlertController.addAction(cancleAction)
-        
-        present(orderSettingAlertController, animated: true, completion: nil)
     }
 }
 
@@ -203,13 +202,19 @@ extension BoxOfficeCollectionViewController: UICollectionViewDataSource, UIColle
          데이터 리퀘스트에서 오류시 사용자에게 보여줄 수 있는 화면이 없습니다. 추가한다면 더 사용자에게 유익할 것 같습니다.
          
          */
-        DispatchQueue.global().async {
+        DispatchQueue.global().async { [weak self] in
             guard let thumb = movie.thumb else { return }
             guard let thumbImageURL = URL(string: thumb) else {
+                DispatchQueue.main.async {
+                    self?.alert("썸네일 로딩 실패")
+                }
                 return
             }
             
             guard let thumbImageData = try? Data(contentsOf: thumbImageURL) else {
+                DispatchQueue.main.async {
+                    self?.alert("썸네일 로딩 실패")
+                }
                 return
             }
             

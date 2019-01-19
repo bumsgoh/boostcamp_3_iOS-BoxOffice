@@ -27,17 +27,14 @@ class StarRatingView: UIView {
     }
     
     private func commonInitializer() {
-        containerView = Bundle.main.loadNibNamed("StarRatingView", owner: self, options: nil)?.first as? UIView
         
-        guard let containerView = containerView else {
+        guard let containerView = Bundle.main.loadNibNamed("StarRatingView", owner: self, options: nil)?.first as? UIView else {
             return
         }
         /*
          아래와 같은 방식으로 하면 더 간결할 것 같습니다.
-       guard let containerView = Bundle.main.loadNibNamed("StarRatingView", owner: self, options: nil)?.first as? UIView else {
-            return
-        }
         */
+        self.containerView = containerView
         containerView.frame = self.bounds
         addSubview(containerView)
     }

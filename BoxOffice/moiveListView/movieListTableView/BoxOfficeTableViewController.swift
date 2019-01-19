@@ -18,7 +18,7 @@ class BoxOfficeTableViewController: UIViewController {
     //MARK:- Property
     private var movies: [Movie] = []
     private let cellIdentifier = "movieTableCell"
-    private var orderType: String = "0" // Enum을 사용하면 가독성에 도움이 될것같습니다.
+    private var sortType: OrderType = .reservation // Enum을 사용하면 가독성에 도움이 될것같습니다.
     
     private lazy var refreshControl: UIRefreshControl = {
         let refreshControl = UIRefreshControl()
@@ -46,7 +46,7 @@ class BoxOfficeTableViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        resetAndFetchMovies(orderType: orderType)
+        resetAndFetchMovies(orderType: BoxOfficeAPI.orderType)
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -55,56 +55,14 @@ class BoxOfficeTableViewController: UIViewController {
          뷰가 appear 할때마다 계속해서 데이터 리퀘스트를 보내면 refresh의 의미가 없어지는것 같습니다. 추가해야하는 이유가 있을까요 ?
          */
         indicator.startAnimating()
-    
-        requestMovie(orderType: orderType) { [weak self] result, isSucceed in
-            guard let self = self else { return }
-            if !isSucceed {
-                self.alert("해당 영화에 대한 데이터가 없습니다.")
-                return
-            }
-            
-            guard let result = result else {
-                self.alert("해당 영화에 대한 데이터가 없습니다.")
-                return
-            }
-            
-            self.movies = result
-            
-            DispatchQueue.main.async {
-                self.tableView.reloadData()
-                self.indicator.stopAnimating()
-                self.refreshControl.endRefreshing()
-            }
-        }
+        //fetchMovieList(sortType: sortType)
+       
     }
 
     //MARK:- Method
     @objc func handleRefreshControl(_ sender: UIRefreshControl) {
         indicator.startAnimating()
-        
-        requestMovie(orderType: self.orderType) { [weak self]  result, isSucceed in
-            guard let self = self else {
-                return
-            }
-            
-            if !isSucceed {
-                self.alert("해당 영화에 대한 데이터가 없습니다.")
-                return
-            }
-            
-            guard let result = result else {
-                self.alert("해당 영화에 대한 데이터가 없습니다.")
-                return
-            }
-            
-            self.movies = result
-
-            DispatchQueue.main.async {
-                self.tableView.reloadData()
-                self.indicator.stopAnimating()
-                self.refreshControl.endRefreshing()
-            }
-        }
+        fetchMovieList(sortType: sortType)
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
@@ -119,15 +77,15 @@ class BoxOfficeTableViewController: UIViewController {
     }
     
     //settings버튼을 통해 영화 정렬타입을 변경했을 경우
-    private func resetAndFetchMovies(orderType: String) {
+    private func resetAndFetchMovies(orderType: OrderType) {
         let navigationTitle: String
         
         switch orderType {
-        case "0":
+        case .reservation:
             navigationTitle = "예매율순"
-        case "1":
+        case .quration:
             navigationTitle = "큐레이션"
-        case "2":
+        case .date:
             navigationTitle = "개봉일순"
         default:
             navigationTitle = "예매율순"
@@ -138,49 +96,34 @@ class BoxOfficeTableViewController: UIViewController {
         indicator.startAnimating()
         
         //orderType에 맞게 영화목록 다시 가져오기
-        requestMovie(orderType: orderType) { [weak self] result, isSucceed in
-            guard let self = self else { return }
-            if !isSucceed {
-                self.alert("해당 영화에 대한 데이터가 없습니다.")
-                return
-            }
-            
-            guard let result = result else {
-                self.alert("해당 영화에 대한 데이터가 없습니다.")
-                return
-            }
-            
-            self.movies = result
-
-            DispatchQueue.main.async {
-                self.tableView.reloadData()
-                self.indicator.stopAnimating()
-                self.refreshControl.endRefreshing()
-            }
-        }
+       fetchMovieList(sortType: orderType)
     }
     //<같은 기능의 메서드가 테이블 / 컬렉션 두 군데에 있습니다. 하나로 합쳐볼 수 있을것 같습니다>
     private func showOrderTypeSettingActionSheet(style: UIAlertController.Style) {
         let orderSettingAlertController = UIAlertController(title: "정렬방식 선택", message: "영화를 어떤 순서로 정렬할까요?", preferredStyle: style)
         
         let sortByRateAction = UIAlertAction(title: "예매율", style: .default) { (action) in
-            self.orderType = "0"
-            self.resetAndFetchMovies(orderType: "0")
+            self.sortType = .reservation
+            BoxOfficeAPI.orderType = .reservation
+            self.resetAndFetchMovies(orderType: .reservation)
         }
         
         let sortByCurationAction = UIAlertAction(title: "큐레이션", style: .default) { (action) in
-            self.orderType = "1"
-            self.resetAndFetchMovies(orderType: "1")
+            self.sortType = .quration
+            BoxOfficeAPI.orderType = .quration
+            self.resetAndFetchMovies(orderType: .quration)
         }
         
         let sortByDateAction = UIAlertAction(title: "개봉일순", style: .default) { (action) in
-            self.orderType = "2"
-            self.resetAndFetchMovies(orderType: "2")
+            self.sortType = .date
+            BoxOfficeAPI.orderType = .date
+            self.resetAndFetchMovies(orderType: .date)
         }
         
         let cancleAction = UIAlertAction(title: "취소", style: .cancel) { (action) in
-            self.orderType = "0"
-            print("cancle")
+            self.sortType = .reservation
+            BoxOfficeAPI.orderType = .reservation
+            print("cancel")
         }
         
         orderSettingAlertController.addAction(sortByRateAction)
@@ -189,6 +132,41 @@ class BoxOfficeTableViewController: UIViewController {
         orderSettingAlertController.addAction(cancleAction)
         
         present(orderSettingAlertController, animated: true, completion: nil)
+    }
+    
+    
+    func fetchMovieList(sortType: OrderType) {
+        guard let request = BoxOfficeAPI.shared.makeRequest(path: .list, components: .orderType, orderType: sortType) else {
+            
+            return
+        }
+        BoxOfficeAPI.shared.requestMovie(with: request, decodeType: APIResponse.self) { [weak self]  result, isSucceed in
+            guard let self = self else {
+                return
+            }
+            
+            if !isSucceed {
+                DispatchQueue.main.async {
+                    self.alert("해당 영화에 대한 데이터가 없습니다.")
+                }
+                return
+            }
+            
+            guard let result = result else {
+                DispatchQueue.main.async {
+                    self.alert("해당 영화에 대한 데이터가 없습니다.")
+                }
+                return
+            }
+            
+            self.movies = result.movies
+            
+            DispatchQueue.main.async {
+                self.tableView.reloadData()
+                self.indicator.stopAnimating()
+                self.refreshControl.endRefreshing()
+            }
+        }
     }
 }
 
@@ -235,13 +213,19 @@ extension BoxOfficeTableViewController: UITableViewDataSource, UITableViewDelega
          데이터 리퀘스트에서 오류시 사용자에게 보여줄 수 있는 화면이 없습니다. 추가한다면 더 사용자에게 유익할 것 같습니다.
          
          */
-        DispatchQueue.global().async {
+        DispatchQueue.global().async { [weak self] in
             guard let thumb = movie.thumb else { return }
             guard let thumbImageURL = URL(string: thumb) else {
+                DispatchQueue.main.async {
+                    self?.alert("썸네일 로딩 실패")
+                }
                 return
             }
             
             guard let thumbImageData = try? Data(contentsOf: thumbImageURL) else {
+                DispatchQueue.main.async {
+                    self?.alert("썸네일 로딩 실패")
+                }
                 return
             }
             

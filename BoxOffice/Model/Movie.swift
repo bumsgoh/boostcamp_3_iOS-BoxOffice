@@ -57,3 +57,9 @@ struct Movie: Codable {
         id = try values.decodeIfPresent(String.self, forKey: .id)
     }
 }
+
+enum OrderType: String {
+    case reservation = "0"
+    case quration = "1"
+    case date = "2"
+}
